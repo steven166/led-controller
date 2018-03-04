@@ -1,0 +1,159 @@
+<template activity="main-activity">
+  <style>
+    .top-box {
+      width: 230px;
+      height: 30px;
+      margin-top: 10px;
+      margin-left: auto;
+      margin-right: auto;
+      position: relative;
+    }
+
+    .light {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border-radius: 100%;
+    }
+
+    .red-bar {
+      position: absolute;
+      width: 200px;
+      height: 5px;
+      right: 0;
+      top: 0;
+      background: linear-gradient(to right, #000000, #ff0000);
+    }
+
+    .green-bar {
+      position: absolute;
+      width: 200px;
+      height: 5px;
+      right: 0;
+      top: 10px;
+      background: linear-gradient(to right, #000000, #00ff00);
+    }
+
+    .blue-bar {
+      position: absolute;
+      width: 200px;
+      height: 5px;
+      right: 0;
+      top: 20px;
+      background: linear-gradient(to right, #000000, #0000ff);
+    }
+
+    .current, .requested {
+      position: absolute;
+      width: 1px;
+      left: 0%;
+      top: 0px;
+      bottom: 0px;
+      background-color: white;
+      transition: 0.2s linear left;
+    }
+    .requested {
+      background-color: #999;
+    }
+    .color-picker {
+      margin-top: 10px;
+      margin-left: auto;
+      margin-right: auto;
+      width: 300px;
+      height: 300px;
+    }
+    .control-bar {
+      margin-top: 10px;
+      text-align: center;
+    }
+  </style>
+  <div class="top-box">
+
+    <div class="light"></div>
+    <div class="red-bar">
+      <div class="current"></div>
+      <div class="requested"></div>
+    </div>
+    <div class="green-bar">
+      <div class="current"></div>
+      <div class="requested"></div>
+    </div>
+    <div class="blue-bar">
+      <div class="current"></div>
+      <div class="requested"></div>
+    </div>
+  </div>
+  <div class="color-picker"></div>
+  <div class="control-bar">
+    <button class="paper-button wrippels">Choose</button>
+  </div>
+</template>
+<script>
+  app.activity("main-activity", function () {
+
+    var activity = this;
+
+    this.onCreate = function (eActivity, invokeArg) {
+      this.refreshColors(eActivity, function(){
+        $.browser = {};
+        console.log(eActivity.find(".color-picker").size());
+        eActivity.find(".color-picker").farbtastic(function(color) {
+          eActivity.find(".paper-button").css("background-color", color);
+        });
+        eActivity.on("click", ".paper-button", function(){
+          var cssColor = eActivity.find(".paper-button").css("background-color");
+          var colorSections = cssColor.split("(")[1].split(")")[0].split(",");
+          var colors = {
+            red: parseInt(colorSections[0]),
+            green: parseInt(colorSections[1]),
+            blue: parseInt(colorSections[2]),
+            period: 5000
+          };
+          activity.ajax("/api/v1/colors", {
+            type: "POST",
+            data: JSON.stringify(colors),
+            contentType: "application/json",
+            dataType: "json"
+          }).done(function(){
+            //done
+          });
+        });
+        activity.loaded();
+
+        setInterval(function(){
+          activity.refreshColors(activity.element);
+        }, 200);
+      });
+
+      return false;
+
+    };
+
+    this.refreshColors = function(element, callback){
+      var getter = this.get("/api/v1/colors");
+      getter.done(function (colors) {
+        setColors(colors, element);
+        if(callback){
+          callback();
+        }
+      });
+      getter.fail(function (xhr) {
+        if (xhr.status === 0 && xhr.statusText !== "abort") {
+          activity.onError("Connection Error", true);
+        } else {
+          activity.onError("Something went wrong", true);
+        }
+      });
+    };
+
+    function setColors(colors, element) {
+      element.find(".light").css("background-color", "rgb(" +parseInt(colors.currentRed) + "," + parseInt(colors.currentGreen) + "," + parseInt(colors.currentBlue) + ")");
+      element.find(".red-bar .current").css("left", (colors.currentRed / 255 * 100) + "%");
+      element.find(".green-bar .current").css("left", (colors.currentGreen / 255 * 100) + "%");
+      element.find(".blue-bar .current").css("left", (colors.currentBlue / 255 * 100) + "%");
+      element.find(".red-bar .requested").css("left", (colors.red / 255 * 100) + "%");
+      element.find(".green-bar .requested").css("left", (colors.green / 255 * 100) + "%");
+      element.find(".blue-bar .requested").css("left", (colors.blue / 255 * 100) + "%");
+    }
+  });
+</script>
